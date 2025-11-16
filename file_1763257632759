@@ -1,0 +1,51 @@
+case "pendek": {
+  if (!text && !m.quoted)
+    return m.reply(`Kirim atau reply video yang ingin dijadikan video pendek (bulat)!`);
+
+  let media;
+  if (m.quoted && m.quoted.mtype === 'videoMessage') {
+    media = await m.quoted.download();
+  } else if (/^https?:\/\//.test(text)) {
+    media = { url: text };
+  } else if (!m.quoted) {
+    return m.reply(`Kirim atau reply video dengan caption *${prefix + command}*`);
+  }
+
+  // Deteksi apakah target adalah newsletter
+  let isNewsletter = text && text.includes('@newsletter');
+  let tujuan = isNewsletter ? text : m.chat;
+
+  // Cek izin owner kalau kirim ke newsletter
+  if (isNewsletter && !isOwner) {
+    return m.reply(`❌ Hanya owner yang boleh mengirim ke newsletter!`);
+  }
+
+  await sock.sendMessage(tujuan, {
+    video: media,
+    mimetype: 'video/mp4',
+    fileLength: 100000,
+    seconds: 10000000,
+    isAnimated: false,
+    contextInfo: {
+      isForwarded: false,
+      forwardedNewsletterMessageInfo: {
+        newsletterJid: "0@newsletter",
+        newsletterName: "Short Video",
+      },
+      externalAdReply: {
+        showAdAttribution: false,
+        title: "🎥 Video Pendek",
+        body: "Video bentuk bulat",
+        mediaType: 1,
+        thumbnailUrl: "https://telegra.ph/file/d904a2d42d45f2e451aa1.jpg",
+        sourceUrl: "https://whatsapp.com",
+      },
+    },
+    gifPlayback: false,
+    viewOnce: true,
+    ptv: true // penting: menjadikan video berbentuk bulat
+  }, { quoted: m });
+
+  m.reply(`✅ Video pendek (bulat) berhasil dikirim!`);
+}
+break;
