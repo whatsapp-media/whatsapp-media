@@ -1,0 +1,79 @@
+global.api = {
+   base: "https://hoshino-apis.vercel.app",
+   key: "zionjs"
+}
+
+// SETTING PROMPT AUTO AI
+global.prompt = `✨ kamu Hoshino AI, sistem auto-intelligent assistant. ✨
+
+TUGASKU:
+- Pahami maksud user.
+- Jawab cepat, rapi, tanpa ribet.
+- Bisa coding, rewrite, analisa, dan lainnya.
+- Selalu jawab santai tapi jelas.
+
+Jika user minta info, jelasin.
+Jika user minta ngerap, bikin.
+Jika user minta coding, generate.
+
+Gaya bicara: casual profesional, friendly, gak kaku.
+
+Selalu jawab langsung inti.`
+global.model = "jokowi"
+/* LIST MODEL SUARA
+- jokowi
+- bella
+- prabowo
+- miku
+*/
+
+async function autoAIVN(m, sock, isCmd) {
+  try {
+    // ❌ Abaikan command & pesan bot
+    if (isCmd) return;
+    if (!m.text) return;
+    if (m.key.fromMe) return;
+
+    const userText = m.text;
+
+    // ===============================
+    // 1️⃣ REQUEST KE AI (Gemini)
+    // ===============================
+    const aiUrl = `${global.api.base}/api/ai?q=${encodeURIComponent(userText)}&prompt=${encodeURIComponent(prompt)}`;
+    const aiRes = await axios.get(aiUrl);
+
+    if (!aiRes.data || !aiRes.data.status) return;
+
+    const message = aiRes.data.response;
+    if (!message) return;
+
+    // ===============================
+    // 2️⃣ TEXT → VOICE (ElevenLabs)
+    // ===============================
+    const audioUrl =
+      `${global.api.base}/api/elevenlabs` +
+      `?text=${encodeURIComponent(message)}` +
+      `&voice=${model}` +
+      `&pitch=0&speed=0.9` +
+      `&key=${global.api.key}`;
+
+    // ===============================
+    // 3️⃣ KIRIM VN
+    // ===============================
+    await sock.sendMessage(
+      m.chat,
+      {
+        audio: { url: audioUrl },
+        mimetype: "audio/mpeg",
+        ptt: true
+      },
+      { quoted: m }
+    );
+
+  } catch (err) {
+    console.error("AutoAI VN Error:", err);
+  }
+}
+if (global.autoAi && !m.key.fromMe && !isCmd) {
+  await autoAIVN(m, sock, isCmd);
+}
