@@ -1,0 +1,74 @@
+/* PLAY CHANNEL
+contoh penggunaan
+.playch idch | judul
+.playch 120363402508663272@newsletter | goyang dumang
+*/
+
+const ytdl = require('@vreden/youtube_scraper');
+const yts = require('yt-search');
+
+case "playch": {
+if (!isOwner) return reply(mess.owner)
+    try {
+        if (!text.includes('|')) return reply(`Format:\n${cmd} idtujuan | judul lagu`);
+
+        let tujuan = text.split("|")[0].trim();
+        let query  = text.split("|")[1].trim();
+
+        React("🎵");
+
+        // YT Search
+        let ytsSearch = await yts(query);
+        let re = ytsSearch.all[0];
+        if (!re) return reply("Tidak ditemukan!");
+
+        // Download MP3
+        let dl = await ytdl.ytmp3(re.url);
+        let mp3Url = dl.download.url;
+        let mp3 = await getBuffer(mp3Url);
+
+        const fs = require("fs");
+        const { exec } = require("child_process");
+        const path = require("path");
+
+        let input = path.join(__dirname, "in.mp3");
+        let output = path.join(__dirname, "out.ogg");
+
+        // Save MP3
+        fs.writeFileSync(input, mp3);
+
+        // Convert OGG OPUS (WhatsApp Compatible)
+        await new Promise((resolve, reject) => {
+            exec(
+                `ffmpeg -y -i "${input}" -ac 1 -ar 48000 -b:a 48k -c:a libopus "${output}"`,
+                (err) => err ? reject(err) : resolve()
+            );
+        });
+
+        let ogg = fs.readFileSync(output);
+
+        // SEND TO TARGET
+        await sock.sendMessage(tujuan, {
+            audio: ogg,
+            mimetype: "audio/ogg; codecs=opus",
+            ptt: true,
+            contextInfo: {
+                externalAdReply: {
+                    title: re.title,
+                    thumbnailUrl: re.thumbnail,
+                    renderLargerThumbnail: true
+                }
+            }
+        });
+
+        reply(`✔️ PTT terkirim ke *${tujuan}*`);
+
+        fs.unlinkSync(input);
+        fs.unlinkSync(output);
+
+    } catch (e) {
+        console.log(e);
+        reply("❌ Error saat membuat PTT!");
+    }
+}
+break
