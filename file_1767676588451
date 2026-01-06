@@ -1,0 +1,41 @@
+case 'tobugil': {
+  if (!isPremium) return reply(mess.prem)
+
+  try {
+    const q = m.quoted ? m.quoted : m
+    const mime = (q.msg || q).mimetype || ''
+
+    if (!/image/.test(mime)) {
+      return reply('mana foto nya?')
+    }
+
+    // download media
+    let media = await sock.downloadAndSaveMediaMessage(q)
+
+    // upload ke catbox
+    let directLink = await CatBox(media)
+
+    // request api
+    const api = await fetchJson(
+      `https://api.baguss.xyz/api/edits/tobugil?image=${directLink}`
+    )
+
+    if (!api || !api.url) {
+      throw 'Gagal mendapatkan hasil dari API'
+    }
+
+    await sock.sendMessage(
+      m.chat,
+      {
+        image: { url: api.url },
+        caption: 'Done.'
+      },
+      { quoted: m }
+    )
+
+  } catch (err) {
+    console.error(err)
+    reply('❌ Terjadi kesalahan saat memproses gambar, coba lagi nanti.')
+  }
+}
+break
