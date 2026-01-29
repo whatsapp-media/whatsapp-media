@@ -1,0 +1,145 @@
+/**
+  *» Nama :* — [ YOUTUBE PLAY SAVETUBE ] —
+  *» Type :* Plugin - ESM
+  *» Base Url :* https://yt.savetube.me
+  *» Creator :* -Kyzo Yamada々
+**/
+
+import axios from "axios"
+import crypto from "crypto"
+import yts from "yt-search"
+
+
+class savetube {
+  constructor() {
+    this.ky = "C5D58EF67A7584E4A29F6C35BBC4EB12"
+    this.fmt = ["144", "240", "360", "480", "720", "1080", "mp3"]
+    this.m =
+      /^((?:https?:)?\/\/)?((?:www|m|music)\.)?(?:youtube\.com|youtu\.be)\/(?:watch\?v=)?(?:embed\/)?(?:v\/)?(?:shorts\/)?([a-zA-Z0-9_-]{11})/
+    this.is = axios.create({
+      headers: {
+        "content-type": "application/json",
+        origin: "https://yt.savetube.me",
+        "user-agent":
+          "Mozilla/5.0 (Android 15; Mobile) Gecko/130.0 Firefox/130.0",
+      },
+    })
+  }
+
+  async decrypt(enc) {
+    try {
+      const sr = Buffer.from(enc, "base64")
+      const ky = Buffer.from(this.ky, "hex")
+      const iv = sr.slice(0, 16)
+      const dt = sr.slice(16)
+      const dc = crypto.createDecipheriv("aes-128-cbc", ky, iv)
+      const res = Buffer.concat([dc.update(dt), dc.final()])
+      return JSON.parse(res.toString())
+    } catch (e) {
+      throw new Error("Decrypt error: " + e.message)
+    }
+  }
+
+  async getCdn() {
+    const response = await this.is.get(
+      "https://media.savetube.vip/api/random-cdn"
+    )
+    if (!response.data) return { status: false }
+    return { status: true, data: response.data.cdn }
+  }
+
+  async download(url, format = "mp3") {
+    const id = url.match(this.m)?.[3]
+    if (!id) return { status: false, msg: "Invalid YouTube URL" }
+
+    if (!this.fmt.includes(format))
+      return { status: false, msg: "Format tidak tersedia", list: this.fmt }
+
+    try {
+      const cdn = await this.getCdn()
+      if (!cdn.status) return cdn
+
+      const info = await this.is.post(`https://${cdn.data}/v2/info`, {
+        url: `https://www.youtube.com/watch?v=${id}`,
+      })
+
+      const dec = await this.decrypt(info.data.data)
+
+      const dl = await this.is.post(`https://${cdn.data}/download`, {
+        id,
+        downloadType: format === "mp3" ? "audio" : "video",
+        quality: format === "mp3" ? "128" : format,
+        key: dec.key,
+      })
+
+      return {
+        status: true,
+        title: dec.title,
+        format,
+        thumb:
+          dec.thumbnail || `https://i.ytimg.com/vi/${id}/hqdefault.jpg`,
+        duration: dec.duration,
+        cached: dec.fromCache,
+        dl: dl.data.data.downloadUrl,
+      }
+    } catch (e) {
+      return { status: false, error: e.message }
+    }
+  }
+}
+
+const ytdl = new savetube()
+
+
+async function handler(m, { sock, text, usedPrefix, command }) {
+  if (!text)
+    return m.reply(`Contoh:\n${usedPrefix + command} Alan Walker Faded`)
+
+  try {
+    await sock.sendMessage(m.chat, {
+      react: { text: "🔍", key: m.key },
+    })
+
+    const search = await yts(text)
+    if (!search.videos.length) return m.reply("❌ Video tidak ditemukan")
+
+    const video = search.videos[0]
+
+    await m.reply(`🎵 *${video.title}*\n⏳ Downloading MP3...`)
+
+    const res = await ytdl.download(video.url, "mp3")
+    if (!res.status) return m.reply(res.msg || res.error)
+
+    await sock.sendMessage(
+      m.chat,
+      {
+        audio: { url: res.dl },
+        mimetype: "audio/mpeg",
+        fileName: `${res.title}.mp3`,
+        contextInfo: {
+          externalAdReply: {
+            title: res.title,
+            body: video.author.name,
+            thumbnailUrl: res.thumb,
+            mediaType: 1,
+            renderLargerThumbnail: true,
+          },
+        },
+      },
+      { quoted: m }
+    )
+
+    await sock.sendMessage(m.chat, {
+      react: { text: "✅", key: m.key },
+    })
+  } catch (e) {
+    console.error(e)
+    m.reply("❌ Error saat download lagu")
+  }
+}
+
+handler.help = ["play <judul>", "song <judul>", "ytplay <judul>"]
+handler.tags = ["downloader", "music"]
+handler.command = /^(play|song|ytplay)$/i
+
+export default handler
