@@ -1,0 +1,92 @@
+/*
+############## [ C A S E ] ###############
+*/
+case "cekidch": {
+
+if (!text) return reply("linkchnya")
+if (!text.includes("https://whatsapp.com/channel/")) return reply("Link tautan tidak valid")
+let result = text.split('https://whatsapp.com/channel/')[1]
+let res = await sock.newsletterMetadata("invite", result)
+let teks = `
+* *ID :* ${res.id}
+* *Nama :* ${res.name}
+* *Total Pengikut :* ${res.subscribers}
+* *Status :* ${res.state}
+* *Verified :* ${res.verification == "VERIFIED" ? "Terverifikasi" : "Tidak"}
+`
+reply(teks)
+reply(res.id)
+}
+break
+
+/*
+############## [ C J S ] ###############
+*/
+
+module.exports = async function handler(m, { sock, text, reply }) {
+  if (!text) return reply("Link channelnya?")
+  if (!text.includes("https://whatsapp.com/channel/")) {
+    return reply("❌ Link tautan tidak valid")
+  }
+
+  try {
+    const result = text.split("https://whatsapp.com/channel/")[1]
+    const res = await sock.newsletterMetadata("invite", result)
+
+    const teks = `
+*📢 INFO CHANNEL*
+*ID:* ${res.id}
+*Nama:* ${res.name}
+*Total Pengikut:* ${res.subscribers}
+*Status:* ${res.state}
+*Verified:* ${res.verification === "VERIFIED" ? "Terverifikasi" : "Tidak"}
+`
+
+    reply(teks)
+    reply(res.id)
+
+  } catch (e) {
+    reply("❌ Gagal mengambil metadata channel")
+  }
+}
+
+module.exports.help = ['cekidch <link>']
+module.exports.tags = ['tools']
+module.exports.command = /^cekidch$/i
+
+/*
+############## [ E S M ] ###############
+*/
+
+async function handler(m, { sock, text, reply }) {
+  if (!text) return reply("Link channelnya?")
+  if (!text.includes("https://whatsapp.com/channel/")) {
+    return reply("❌ Link tautan tidak valid")
+  }
+
+  try {
+    const result = text.split("https://whatsapp.com/channel/")[1]
+    const res = await sock.newsletterMetadata("invite", result)
+
+    const teks = `
+*📢 INFO CHANNEL*
+*ID:* ${res.id}
+*Nama:* ${res.name}
+*Total Pengikut:* ${res.subscribers}
+*Status:* ${res.state}
+*Verified:* ${res.verification === "VERIFIED" ? "Terverifikasi" : "Tidak"}
+`
+
+    reply(teks)
+    reply(res.id)
+
+  } catch (e) {
+    reply("❌ Gagal mengambil metadata channel")
+  }
+}
+
+handler.help = ['cekidch <link>']
+handler.tags = ['tools']
+handler.command = /^cekidch$/i
+
+export default handler
