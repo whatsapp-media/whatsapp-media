@@ -1,0 +1,167 @@
+/**
+  *» Nama :* — [ TIKTOK DOWNLOADER ] —
+  *» Type :* Plugin - ESM
+  *» Base Url :* https://tikwm.com
+  *» Creator :* -Kyzo Yamada々
+**/
+
+import axios from "axios"
+
+
+async function tiktokDl(url) {
+  return new Promise(async (resolve, reject) => {
+    try {
+      let data = []
+
+      function formatNumber(integer) {
+        let numb = parseInt(integer)
+        return Number(numb).toLocaleString().replace(/,/g, ".")
+      }
+
+      function formatDate(n, locale = "en") {
+        let d = new Date(n)
+        return d.toLocaleDateString(locale, {
+          weekday: "long",
+          day: "numeric",
+          month: "long",
+          year: "numeric",
+          hour: "numeric",
+          minute: "numeric",
+          second: "numeric",
+        })
+      }
+
+      let domain = "https://www.tikwm.com/api/"
+      let res = (
+        await axios.post(domain, {}, {
+          headers: {
+            Accept: "application/json, text/javascript, */*; q=0.01",
+            "Accept-Language": "id-ID,id;q=0.9",
+            "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
+            Origin: "https://www.tikwm.com",
+            Referer: "https://www.tikwm.com/",
+            "User-Agent":
+              "Mozilla/5.0 (Linux; Android 10) AppleWebKit/537.36 Chrome/116 Mobile Safari/537.36",
+            "X-Requested-With": "XMLHttpRequest",
+          },
+          params: {
+            url,
+            count: 12,
+            cursor: 0,
+            web: 1,
+            hd: 1,
+          },
+        })
+      ).data.data
+
+
+      if (res?.duration == 0) {
+        res.images.map(v => data.push({ type: "photo", url: v }))
+      } 
+
+      else {
+        data.push(
+          { type: "watermark", url: "https://www.tikwm.com" + res.wmplay },
+          { type: "nowatermark", url: "https://www.tikwm.com" + res.play },
+          { type: "nowatermark_hd", url: "https://www.tikwm.com" + res.hdplay }
+        )
+      }
+
+      resolve({
+        status: true,
+        title: res.title,
+        duration: res.duration,
+        cover: "https://www.tikwm.com" + res.cover,
+        data,
+        music: "https://www.tikwm.com" + res.music,
+        stats: {
+          views: formatNumber(res.play_count),
+          likes: formatNumber(res.digg_count),
+        },
+      })
+    } catch (e) {
+      reject(e)
+    }
+  })
+}
+
+
+async function handler(m, { sock, text, command, usedPrefix }) {
+  if (!text || !text.startsWith("https://")) {
+    return m.reply(`Masukkan URL TikTok!\n\nContoh:\n${usedPrefix + command} https://vt.tiktok.com/...`)
+  }
+
+  try {
+    await sock.sendMessage(m.chat, { react: { text: "🕖", key: m.key } })
+
+    const result = await tiktokDl(text)
+    if (!result.status) return m.reply("❌ Gagal mengambil data!")
+
+
+    if (result.duration == 0) {
+      const images = result.data.map(v => v.url)
+      if (!images.length) return m.reply("Foto tidak ditemukan!")
+
+      let total = images.length
+      let i = 1
+
+      for (let img of images) {
+        await sock.sendMessage(
+          m.chat,
+          {
+            image: { url: img },
+            caption: i === 1 
+              ? `📸 *TIKTOK PHOTO*\nTotal: ${total} foto`
+              : `Foto ${i}/${total}`
+          },
+          { quoted: m }
+        )
+        i++
+      }
+
+      await sock.sendMessage(m.chat, { react: { text: "✅", key: m.key } })
+      return
+    }
+
+
+    let video =
+      result.data.find(v => v.type === "nowatermark_hd") ||
+      result.data.find(v => v.type === "nowatermark")
+
+    if (!video) return m.reply("Video tidak ditemukan!")
+
+    await sock.sendMessage(
+      m.chat,
+      {
+        video: { url: video.url },
+        caption: `🎥 *TIKTOK VIDEO*\n\n${result.title}`
+      },
+      { quoted: m }
+    )
+
+    
+    if (result.music) {
+      await sock.sendMessage(
+        m.chat,
+        {
+          audio: { url: result.music },
+          mimetype: "audio/mpeg",
+          fileName: "tiktok.mp3"
+        },
+        { quoted: m }
+      )
+    }
+
+    await sock.sendMessage(m.chat, { react: { text: "✅", key: m.key } })
+
+  } catch (e) {
+    console.error(e)
+    m.reply("❌ Terjadi kesalahan saat download TikTok")
+  }
+}
+
+handler.help = ["tiktok <url>", "tt <url>"]
+handler.tags = ["downloader", "tiktok"]
+handler.command = /^(tiktok|tt)$/i
+
+export default handler
