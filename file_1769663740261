@@ -1,0 +1,159 @@
+case 'listgc': {
+  if (!isOwner) return reply(mess.owner)
+
+  try {
+    const groups = Object.values(await sock.groupFetchAllParticipating())
+    if (!groups.length) return reply('❌ Bot belum gabung di grup manapun.')
+
+    let teks = `⬣ *LIST GROUP ${name.toUpperCase()}*\n`
+    teks += `📊 Total Grup: ${groups.length}\n\n`
+
+    const buttons = []
+
+    for (let i = 0; i < groups.length; i++) {
+      const g = groups[i]
+      const groupId = g.id
+      const groupName = g.subject
+      const memberCount = g.participants?.length || 0
+      const created = moment(g.creation * 1000)
+        .tz('Asia/Jakarta')
+        .format('DD/MM/YYYY HH:mm') + ' WIB'
+
+      teks += `*${i + 1}. ${groupName}*\n`
+      teks += `🆔 ID: ${groupId}\n`
+      teks += `👥 Member: ${memberCount}\n`
+      teks += `🕐 Dibuat: ${created}\n\n`
+
+      buttons.push({
+        name: 'cta_copy',
+        buttonParamsJson: JSON.stringify({
+          display_text: `📋 Copy ID GC #${i + 1}`,
+          copy_code: groupId
+        })
+      })
+    }
+
+    await sock.sendMessage(m.chat, {
+      text: teks,
+      footer: '📌 Klik tombol untuk menyalin ID grup',
+      interactiveButtons: buttons
+    }, { quoted: m })
+
+  } catch (e) {
+    console.error(e)
+    reply('❌ Gagal mengambil data grup.')
+  }
+}
+break
+
+
+/**
+  *» Nama :* — [ LIST GROUP BOT ] —
+  *» Type :* Plugin - CJS
+**/
+
+const moment = require('moment-timezone')
+
+module.exports = async function handler(m, { sock, isOwner, reply, name }) {
+  if (!isOwner) return reply('Owner only!')
+
+  try {
+    const groups = Object.values(await sock.groupFetchAllParticipating())
+    if (!groups.length) return reply('❌ Bot belum gabung di grup manapun.')
+
+    let teks = `⬣ *LIST GROUP ${name.toUpperCase()}*\n`
+    teks += `📊 Total Grup: ${groups.length}\n\n`
+
+    const buttons = []
+
+    groups.forEach((g, i) => {
+      const created = moment(g.creation * 1000)
+        .tz('Asia/Jakarta')
+        .format('DD/MM/YYYY HH:mm') + ' WIB'
+
+      teks += `*${i + 1}. ${g.subject}*\n`
+      teks += `🆔 ID: ${g.id}\n`
+      teks += `👥 Member: ${g.participants?.length || 0}\n`
+      teks += `🕐 Dibuat: ${created}\n\n`
+
+      buttons.push({
+        name: 'cta_copy',
+        buttonParamsJson: JSON.stringify({
+          display_text: `📋 Copy ID GC #${i + 1}`,
+          copy_code: g.id
+        })
+      })
+    })
+
+    await sock.sendMessage(m.chat, {
+      text: teks,
+      footer: '📌 Klik tombol untuk menyalin ID grup',
+      interactiveButtons: buttons
+    }, { quoted: m })
+
+  } catch (e) {
+    console.error(e)
+    reply('❌ Gagal mengambil data grup.')
+  }
+}
+
+module.exports.help = ['listgc']
+module.exports.tags = ['owner']
+module.exports.command = /^listgc$/i
+
+/**
+  *» Nama :* — [ LIST GROUP BOT ] —
+  *» Type :* Plugin - ESM
+**/
+
+import moment from 'moment-timezone'
+
+async function handler(m, { sock, isOwner, reply, name }) {
+  if (!isOwner) return reply('Owner only!')
+
+  try {
+    const groups = Object.values(await sock.groupFetchAllParticipating())
+    if (!groups.length) return reply('❌ Bot belum gabung di grup manapun.')
+
+    let teks = `⬣ *LIST GROUP ${name.toUpperCase()}*\n`
+    teks += `📊 Total Grup: ${groups.length}\n\n`
+
+    const buttons = []
+
+    for (let i = 0; i < groups.length; i++) {
+      const g = groups[i]
+      const created = moment(g.creation * 1000)
+        .tz('Asia/Jakarta')
+        .format('DD/MM/YYYY HH:mm') + ' WIB'
+
+      teks += `*${i + 1}. ${g.subject}*\n`
+      teks += `🆔 ID: ${g.id}\n`
+      teks += `👥 Member: ${g.participants?.length || 0}\n`
+      teks += `🕐 Dibuat: ${created}\n\n`
+
+      buttons.push({
+        name: 'cta_copy',
+        buttonParamsJson: JSON.stringify({
+          display_text: `📋 Copy ID GC #${i + 1}`,
+          copy_code: g.id
+        })
+      })
+    }
+
+    await sock.sendMessage(m.chat, {
+      text: teks,
+      footer: '📌 Klik tombol untuk menyalin ID grup',
+      interactiveButtons: buttons
+    }, { quoted: m })
+
+  } catch (e) {
+    console.error(e)
+    reply('❌ Gagal mengambil data grup.')
+  }
+}
+
+handler.help = ['listgc']
+handler.tags = ['owner']
+handler.command = /^listgc$/i
+
+export default handler
