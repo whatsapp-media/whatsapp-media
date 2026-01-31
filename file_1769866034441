@@ -1,0 +1,66 @@
+/**
+ * Catbox Uploader Plugin (ESM)
+ * Command: .tourl
+ * Creator: Kyzo Yamada
+ */
+
+import fs from "fs"
+import axios from "axios"
+import FormData from "form-data"
+
+async function CatBox(filePath) {
+  try {
+    const fileStream = fs.createReadStream(filePath)
+    const formData = new FormData()
+
+    formData.append("fileToUpload", fileStream)
+    formData.append("reqtype", "fileupload")
+    formData.append("userhash", "")
+
+    const response = await axios.post(
+      "https://catbox.moe/user/api.php",
+      formData,
+      { headers: formData.getHeaders() }
+    )
+
+    return response.data
+  } catch (error) {
+    console.error("Catbox Upload Error:", error)
+    return null
+  }
+}
+
+
+
+let handler = async (m, { conn, quoted, mimetype }) => {
+  if (!quoted) return m.reply("❌ Reply media!")
+  if (!/image|video|audio/.test(mimetype))
+    return m.reply("❌ Reply foto/video/audio!")
+
+  m.reply("⏳ Uploading to Catbox...")
+
+  try {
+    const media = await conn.downloadAndSaveMediaMessage(quoted)
+    const url = await CatBox(media)
+
+    if (!url) return m.reply("❌ Upload gagal!")
+
+    await conn.sendMessage(
+      m.chat,
+      { text: `✅ *Upload Berhasil!*\n\n🌐 URL:\n${url}` },
+      { quoted: m }
+    )
+
+
+    fs.unlinkSync(media)
+  } catch (e) {
+    console.error(e)
+    m.reply("❌ Error: " + e.message)
+  }
+}
+
+handler.help = ["tourl"]
+handler.tags = ["tools"]
+handler.command = /^(tourl|catbox)$/i
+
+export default handler
