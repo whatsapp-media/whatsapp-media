@@ -1,0 +1,42 @@
+case 'play': {
+  const axios = require('axios')
+  const API = 'https://api.apocalypse.web.id/download/play'
+
+  if (!text) return reply('Contoh:\n.play kabhi khusi | 320')
+
+  try {
+    let [query, br] = text.split('|').map(v => v.trim())
+    let bitrate = br || '320'
+
+    await sock.sendMessage(m.chat, { react: { text: '⏳', key: m.key } })
+
+  
+    const url = `${API}?q=${encodeURIComponent(query)}&bitrate=${bitrate}`
+    const res = await axios.get(url)
+    if (!res.data.status) throw 'Not Found'
+    const data = res.data.result
+
+    await sock.sendMessage(m.chat, {
+      audio: { url: data.download_url },
+      mimetype: 'audio/mpeg',
+      fileName: `${data.title}.mp3`,
+      contextInfo: {
+        externalAdReply: {
+          title: data.title,
+          body: `${data.channel} • ${bitrate}kbps`,
+          thumbnailUrl: data.thumbnail,
+          sourceUrl: 'https://youtube.com',
+          mediaType: 1,
+          renderLargerThumbnail: true
+        }
+      }
+    }, { quoted: m })
+
+    await sock.sendMessage(m.chat, { react: { text: '✅', key: m.key } })
+
+  } catch (e) {
+    await sock.sendMessage(m.chat, { react: { text: '❌', key: m.key } })
+    reply('Error bang')
+  }
+}
+break
