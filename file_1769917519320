@@ -1,0 +1,69 @@
+/**
+ * Remove Background Plugin (ESM)
+ * Command: .removebg
+ * Creator: Kyzo Yamada
+ */
+
+import fetch from "node-fetch"
+import fs from "fs"
+import axios from "axios"
+import FormData from "form-data"
+
+
+async function CatBox(filePath) {
+  try {
+    const fileStream = fs.createReadStream(filePath)
+    const formData = new FormData()
+    formData.append("fileToUpload", fileStream)
+    formData.append("reqtype", "fileupload")
+
+    const res = await axios.post("https://catbox.moe/user/api.php", formData, {
+      headers: formData.getHeaders()
+    })
+
+    return res.data
+  } catch (e) {
+    console.error("Catbox Error:", e)
+    return null
+  }
+}
+
+let handler = async (m, { conn, quoted, mime, usedPrefix, command }) => {
+  if (!quoted) return m.reply("❌ Reply gambar yang ingin dihapus background-nya")
+  if (!/image/.test(mime)) return m.reply("❌ Reply gambar saja")
+
+  m.reply("⏳ Menghapus background...")
+
+  try {
+    
+    const media = await quoted.download()
+    const filePath = `./tmp/removebg_${Date.now()}.jpg`
+    fs.writeFileSync(filePath, media)
+
+    
+    const gambar = await CatBox(filePath)
+    fs.unlinkSync(filePath)
+
+    if (!gambar) return m.reply("❌ Gagal upload ke Catbox")
+
+    
+    const api = `https://api.apocalypse.web.id/tools/removebg?url=${encodeURIComponent(gambar)}`
+    
+
+   
+    await conn.sendMessage(m.chat, {
+      image: { url: api },
+      caption: "✅ Background berhasil dihapus"
+    }, { quoted: m })
+
+  } catch (e) {
+    console.error("RemoveBG Error:", e)
+    m.reply("❌ Error: " + e.message)
+  }
+}
+
+handler.help = ["removebg"]
+handler.tags = ["tools", "image"]
+handler.command = /^(removebg|rbg|removebackround)$/i
+
+export default handler
