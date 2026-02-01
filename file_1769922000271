@@ -1,0 +1,75 @@
+/**
+ * Fake Developer Generator (ESM)
+ * API: kayzzidgf.my.id
+ * Command: .fakedev nama (reply foto)
+ * Creator: Kyzo Yamada
+ */
+
+import fs from "fs"
+import axios from "axios"
+import FormData from "form-data"
+import fetch from "node-fetch"
+
+
+async function CatBox(filePath) {
+  try {
+    const form = new FormData()
+    form.append("fileToUpload", fs.createReadStream(filePath))
+    form.append("reqtype", "fileupload")
+
+    const res = await axios.post("https://catbox.moe/user/api.php", form, {
+      headers: form.getHeaders()
+    })
+
+    return res.data
+  } catch (e) {
+    console.error("CatBox Error:", e)
+    return null
+  }
+}
+
+
+let handler = async (m, { text, conn, usedPrefix, command }) => {
+  if (!m.quoted) return m.reply(`Reply foto dengan caption:\n${usedPrefix + command} Nama Kamu`)
+  if (!/image/.test(m.quoted.mimetype)) return m.reply("Reply gambar saja!")
+  if (!text) return m.reply(`Masukkan nama!\nContoh: ${usedPrefix + command} Kyzoo`)
+
+  try {
+    m.reply("⏳Sebentar jir...")
+
+
+    let media = await m.quoted.download()
+    let filePath = "./tmp_fakedev.jpg"
+    fs.writeFileSync(filePath, media)
+
+
+    let url = await CatBox(filePath)
+    if (!url) return m.reply("❌ Gagal upload ke Catbox")
+
+
+    let api = `https://kayzzidgf.my.id/api/maker/fakedev2?url=${encodeURIComponent(url)}&text=${encodeURIComponent(text)}`
+    let res = await fetch(api)
+    let buffer = await res.buffer()
+
+
+    await conn.sendMessage(
+      m.chat,
+      {
+        image: buffer,
+        caption: `✅ Fake Dev Generated\n👤 Nama: ${text}`
+      },
+      { quoted: m }
+    )
+
+    fs.unlinkSync(filePath)
+  } catch (e) {
+    console.error(e)
+    m.reply("❌ Error membuat FakeDev")
+  }
+}
+
+handler.help = ["fakedev"]
+handler.tags = ["maker"]
+handler.command = /^(fakedev)$/i
+
+export default handler
