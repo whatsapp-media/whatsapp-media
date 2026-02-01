@@ -1,0 +1,93 @@
+/**
+ *» Nama : TikTok Search Video
+ *» Type : Plugin ESM
+ *» API  : tikwm.com
+ *» Creator : Kyzo Dev
+ */
+
+import axios from "axios"
+
+async function tiktokSearchVideo(query) {
+  return new Promise((resolve, reject) => {
+    axios("https://tikwm.com/api/feed/search", {
+      method: "POST",
+      headers: {
+        "content-type": "application/x-www-form-urlencoded; charset=UTF-8",
+        cookie: "current_language=en",
+        "User-Agent":
+          "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/116.0.0.0 Mobile Safari/537.36"
+      },
+      data: {
+        keywords: query,
+        count: 12,
+        cursor: 0,
+        web: 1,
+        hd: 1
+      }
+    })
+      .then(res => resolve(res.data.data))
+      .catch(reject)
+  })
+}
+
+async function handler(m, { text, usedPrefix, command, conn }) {
+  if (!text)
+    return m.reply(
+      `⚠️ Eits, kakak lupa kasih kata kunci!\n\nContoh:\n${usedPrefix}${command} jj epep`
+    )
+
+  try {
+    let query = text
+    let index = 0
+
+   
+    if (text.includes("--next")) {
+      let split = text.split("--next")
+      query = split[0].trim()
+      index = parseInt(split[1]) || 0
+    }
+
+    let search = await tiktokSearchVideo(query)
+    if (!search?.videos?.length) return m.reply("❌ Video tidak ditemukan")
+
+    if (index >= search.videos.length) index = 0
+    let v = search.videos[index]
+
+    let caption = `🎥 *${v.title || "No Title"}*
+
+👤 Username: ${v.author.unique_id}
+🕒 Durasi: ${v.duration}s
+❤️ Like: ${v.digg_count}
+💬 Comment: ${v.comment_count}
+🔁 Share: ${v.share_count}
+
+🔗 https://www.tiktok.com/@${v.author.unique_id}/video/${v.video_id}`
+
+    await conn.sendMessage(
+      m.chat,
+      {
+        video: { url: `https://tikwm.com${v.play}` },
+        mimetype: "video/mp4",
+        caption,
+        buttons: [
+          {
+            buttonId: `${usedPrefix}${command} ${query} --next ${index + 1}`,
+            buttonText: { displayText: "➡️ Next" },
+            type: 1
+          }
+        ],
+        headerType: 4
+      },
+      { quoted: m }
+    )
+  } catch (e) {
+    console.error(e)
+    m.reply("❌ Terjadi kesalahan saat mengambil video")
+  }
+}
+
+handler.help = ["ttsearch", "tts"]
+handler.tags = ["tiktok"]
+handler.command = /^(ttsearch|tts|tiktoksearch)$/i
+
+export default handler
